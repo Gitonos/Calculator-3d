@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Calculator Software</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts - Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            /* overflow: hidden; was removed in the previous step to allow scrolling */
+        }
+        /* Custom scrollbar hide for overflow-x-auto in display */
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+        .scrollbar-hide {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+        /* Custom scrollbar style for internal scrolling areas (if desired) */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+
+    <!-- React and ReactDOM CDNs -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel for JSX transformation in the browser (for development, consider a build step for production) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Three.js and OrbitControls CDNs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/controls/OrbitControls.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // ThreeDGraph Component: Renders a 3D surface plot using Three.js
+        const ThreeDGraph = ({ functionToPlot, width, height }) => {
+            const mountRef = React.useRef(null);
+
+            React.useEffect(() => {
+                // Ensure THREE and OrbitControls are available globally
+                if (typeof window.THREE === 'undefined' || typeof window.THREE.OrbitControls === 'undefined') {
+                    console.error('THREE.js or OrbitControls not loaded. Please ensure CDN scripts are included.');
+                    return;
+                }
+
+                const currentMount = mountRef.current;
+                if (!currentMount) return;
+
+                // Destructure global THREE for convenience
+                const { Scene, PerspectiveCamera, WebGLRenderer, AmbientLight, DirectionalLight, AxesHelper, GridHelper, BufferGeometry, Float32BufferAttribute, MeshPhongMaterial, Mesh, Color, OrbitControls } = window.THREE;
+
+                // Scene setup
+                const scene = new Scene();
+                scene.background = new Color(0x282c34); // Dark background for contrast
+
+                // Camera setup
+                const camera = new PerspectiveCamera(75, width / height, 0.1, 1000);
+                camera.position.set(20, 20, 20); // Initial camera position
+                camera.lookAt(0, 0, 0);
+
+                // Renderer setup
+                const renderer = new WebGLRenderer({ antialias: true });
+                renderer.setSize(width, height);
+                currentMount.appendChild(renderer.domElement);
+
+                // Orbit Controls for camera interaction
+                const controls = new OrbitControls(camera, renderer.domElement);
+                controls.enableDamping = true; // An animation loop is required when damping is enabled
+                controls.dampingFactor = 0.25;
+                controls.screenSpacePanning = false;
+                controls.maxPolarAngle = Math.PI / 2; // Limit vertical rotation
+
+                // Lighting
+                const ambientLight = new AmbientLight(0x404040, 2); // Soft white light
+                scene.add(ambientLight);
+                const directionalLight = new DirectionalLight(0xffffff, 1);
+                directionalLight.position.set(1, 1, 1).normalize();
+                scene.add(directionalLight);
+
+                // Axes Helper for orientation
+                const axesHelper = new AxesHelper(10); // Size of axes
+                scene.add(axesHelper);
+
+                // Grid Helper for ground plane reference
+                const gridHelper = new GridHelper(20, 20, 0x888888, 0x444444);
+                scene.add(gridHelper);
+
+                // Create the surface geometry based on the provided function
+                const resolution = 50; // Number of divisions along x and y
+                const range = 10; // Range from -range to +range for x and y
+                const step = (range * 2) / resolution;
+
+                const geometry = new BufferGeometry();
+                const vertices = [];
+                const colors = [];
+
+                let minZ = Infinity;
+                let maxZ = -Infinity;
+
+                // First pass to determine min/max Z for color scaling
+                for (let i = 0; i <= resolution; i++) {
+                    for (let j = 0; j <= resolution; j++) {
+                        const x = -range + i * step;
+                        const y = -range + j * step;
+                        try {
+                            const z = functionToPlot(x, y);
+                            minZ = Math.min(minZ, z);
+                            maxZ = Math.max(maxZ, z);
+                        } catch (e) {
+                            console.error("Error evaluating function (initial pass):", e);
+                            const z = 0;
+                            minZ = Math.min(minZ, z);
+                            maxZ = Math.max(maxZ, z);
+                        }
+                    }
+                }
+
+                // Define color mapping for the surface based on Z-value
+                const colorScale = (value, minZ, maxZ) => {
+                    if (maxZ === minZ) return new Color(0.5, 0.5, 0.5); // Handle flat surfaces
+                    const normalized = (value - minZ) / (maxZ - minZ);
+                    const color = new Color();
+                    // Simple gradient from blue (low) to red (high)
+                    color.setHSL(0.6 - (normalized * 0.6), 1, 0.5); // Hue from blue (0.6) to red (0)
+                    return color;
+                };
+
+                // Second pass to create vertices and colors
+                for (let i = 0; i <= resolution; i++) {
+                    for (let j = 0; j <= resolution; j++) {
+                        const x = -range + i * step;
+                        const y = -range + j * step;
+                        let z = 0;
+                        try {
+                            z = functionToPlot(x, y);
+                        } catch (e) {
+                            z = 0; // Default to 0 on error
+                        }
+
+                        vertices.push(x, z, y); // Swapped Y and Z to align Z-axis upwards (common in 3D plotting)
+                        const color = colorScale(z, minZ, maxZ);
+                        colors.push(color.r, color.g, color.b);
+                    }
+                }
+
+                const indices = [];
+                for (let i = 0; i < resolution; i++) {
+                    for (let j = 0; j < resolution; j++) {
+                        const i0 = i * (resolution + 1) + j;
+                        const i1 = i0 + 1;
+                        const i2 = (i + 1) * (resolution + 1) + j;
+                        const i3 = i2 + 1;
+
+                        indices.push(i0, i2, i1); // First triangle
+                        indices.push(i1, i2, i3); // Second triangle
+                    }
+                }
+
+                geometry.setAttribute('position', new Float32BufferAttribute(vertices, 3));
+                geometry.setAttribute('color', new Float32BufferAttribute(colors, 3));
+                geometry.setIndex(indices);
+                geometry.computeVertexNormals(); // For proper lighting
+
+                const material = new MeshPhongMaterial({
+                    vertexColors: true, // Enable vertex colors
+                    side: THREE.DoubleSide,
+                    flatShading: true, // Gives a faceted look
+                    shininess: 30
+                });
+                const mesh = new Mesh(geometry, material);
+                scene.add(mesh);
+
+                // Animation loop
+                const animate = () => {
+                    requestAnimationFrame(animate);
+                    controls.update(); // Only required if controls.enableDamping is set to true
+                    renderer.render(scene, camera);
+                };
+                animate();
+
+                // Handle window resize (this will still work for the component itself within the flexible parent)
+                const handleResize = () => {
+                    if (currentMount) {
+                        const parentWidth = currentMount.clientWidth;
+                        const parentHeight = currentMount.clientHeight;
+                        camera.aspect = parentWidth / parentHeight;
+                        camera.updateProjectionMatrix();
+                        renderer.setSize(parentWidth, parentHeight);
+                    }
+                };
+                // Attach resize listener to the parent element, not window, if we want component-level resizing
+                const resizeObserver = new ResizeObserver(handleResize);
+                resizeObserver.observe(currentMount);
+
+
+                // Cleanup function
+                return () => {
+                    resizeObserver.disconnect(); // Disconnect observer
+                    if (currentMount && renderer.domElement) {
+                        currentMount.removeChild(renderer.domElement);
+                    }
+                    geometry.dispose();
+                    material.dispose();
+                    renderer.dispose();
+                    controls.dispose();
+                    scene.children.forEach(child => scene.remove(child)); // Remove all objects
+                };
+            }, [width, height, functionToPlot]); // Re-run effect if dimensions or function change
+
+            return <div ref={mountRef} style={{ width: width, height: height, background: 'linear-gradient(135deg, #30353b, #1a1e22)', borderRadius: '1rem', overflow: 'hidden' }}></div>;
+        };
+
+
+        // Main App component for the Pro Calculator
+        const App = () => {
+            // State to hold the current input/display value
+            const [input, setInput] = React.useState('');
+            // State to hold the result of the calculation
+            const [result, setResult] = React.useState('');
+            // State to toggle between calculator and 3D graph view
+            const [show3DGraph, setShow3DGraph] = React.useState(false);
+            // State for the function string to plot in 3D
+            const [plotFunctionString, setPlotFunctionString] = React.useState('Math.sin(x * 0.5) * Math.cos(y * 0.5) * 5');
+            // State to show/hide the advanced calculus panel
+            const [showCalculusPanel, setShowCalculusPanel] = React.useState(false);
+
+
+            // Converts a string function (e.g., "x + y") into a JavaScript function
+            // WARNING: This uses new Function() which is similar to eval() and has security implications.
+            // For production, use a dedicated, secure math expression parser.
+            const createPlotFunction = React.useCallback((funcStr) => {
+                try {
+                    // Provide Math object to the function scope
+                    const func = new Function('x', 'y', 'Math', 'return ' + funcStr);
+                    return (x, y) => func(x, y, Math);
+                } catch (e) {
+                    console.error("Invalid function string:", e);
+                    return (x, y) => 0; // Return a constant function on error
+                }
+            }, []);
+
+            // Prepare the function for the 3D graph component
+            const parsedPlotFunction = createPlotFunction(plotFunctionString);
+
+
+            // Handles button clicks (numbers, operators, functions)
+            const handleButtonClick = (value) => {
+                // Clear the input if a result is displayed and a new number/operator is pressed
+                if (result && !['+', '-', '*', '/', '(', ')'].includes(value)) {
+                    setInput(value);
+                    setResult('');
+                    return;
+                }
+                setInput((prevInput) => prevInput + value);
+            };
+
+            // Handles calculation when '=' is pressed
+            const handleCalculate = () => {
+                try {
+                    // Replace common math functions with their JavaScript equivalents
+                    let expression = input
+                        .replace(/sin\(([^)]+)\)/g, 'Math.sin(parseFloat($1) * Math.PI / 180)') // Convert degrees to radians for sin
+                        .replace(/cos\(([^)]+)\)/g, 'Math.cos(parseFloat($1) * Math.PI / 180)') // Convert degrees to radians for cos
+                        .replace(/tan\(([^)]+)\)/g, 'Math.tan(parseFloat($1) * Math.PI / 180)') // Convert degrees to radians for tan
+                        .replace(/log\(/g, 'Math.log10(') // Base 10 log
+                        .replace(/ln\(/g, 'Math.log(')   // Natural log
+                        .replace(/sqrt\(/g, 'Math.sqrt(')
+                        .replace(/PI/g, 'Math.PI') // Replace 'PI' with Math.PI
+                        .replace(/C_LIGHT/g, '299792458') // Speed of light constant
+                        .replace(/\^/g, '**'); // Replace '^' with '**' for JavaScript exponentiation
+
+                    // Evaluate the expression using new Function()
+                    const calculatedResult = new Function('return ' + expression)();
+                    setResult(calculatedResult.toString());
+                    setInput(calculatedResult.toString()); // Keep the result in input for continuous calculation
+                } catch (error) {
+                    setResult('Error');
+                }
+            };
+
+            // Clears the input and result
+            const handleClear = () => {
+                setInput('');
+                setResult('');
+            };
+
+            // Deletes the last character from the input
+            const handleDelete = () => {
+                setInput((prevInput) => prevInput.slice(0, -1));
+            };
+
+            // Placeholder for advanced calculus functions
+            const handleAdvancedCalculus = (type) => {
+                switch (type) {
+                    case 'integral':
+                        setInput((prev) => prev + 'integral(f(x), a, b)');
+                        setResult('Define f(x), a, b');
+                        break;
+                    case 'derivative':
+                        setInput((prev) => prev + 'derivative(f(x), x)');
+                        setResult('Define f(x), x');
+                        break;
+                    case 'matrix-add':
+                        setInput((prev) => prev + 'matrixAdd()');
+                        setResult('Input matrices');
+                        break;
+                    case 'pi-calc':
+                        setInput('PI');
+                        setResult(Math.PI.toString());
+                        break;
+                    case 'light-speed':
+                        setInput('C_LIGHT');
+                        setResult('299792458'); // Speed of light in m/s
+                        break;
+                    case 'ml-model':
+                        setResult('ML Model Simulation (Placeholder)');
+                        break;
+                    case 'quantum-calc':
+                        setResult('Quantum Calculation (Placeholder)');
+                        break;
+                    case 'time-calc':
+                        setInput('time(distance, speed)');
+                        setResult('Define distance, speed');
+                        break;
+                    case 'area-square':
+                        setInput('area(side)');
+                        setResult('Define side');
+                        break;
+                    default:
+                        setResult('Function not implemented yet.');
+                }
+            };
+
+            // Render the calculator UI
+            return (
+                // min-h-[2500px] forces the page to be scrollable to this height
+                <div className="min-h-[2500px] flex flex-col items-center pt-8 pb-8 bg-gradient-to-br from-blue-900 to-purple-900 font-inter p-4">
+                    {/* Main container for calculator or 3D graph, now responsive */}
+                    <div className="relative p-6 rounded-3xl shadow-lg bg-white bg-opacity-10 backdrop-filter backdrop-blur-lg border border-opacity-20 border-white w-full max-w-2xl transform transition-all duration-300 hover:scale-105 flex flex-col">
+                        {/* Decorative glass elements */}
+                        <div className="absolute top-0 left-0 w-full h-full rounded-3xl overflow-hidden pointer-events-none">
+                            <div className="absolute w-24 h-24 bg-white opacity-5 rounded-full -top-10 -left-10 blur-xl"></div>
+                            <div className="absolute w-32 h-32 bg-white opacity-5 rounded-full -bottom-10 -right-10 blur-xl"></div>
+                        </div>
+
+                        {/* Toggle buttons */}
+                        <div className="flex justify-center space-x-4 mb-4 flex-shrink-0">
+                            <button
+                                onClick={() => { setShow3DGraph(false); setShowCalculusPanel(false); }}
+                                className={`px-4 py-2 text-sm rounded-full font-semibold shadow-md transition-all duration-200 ${!show3DGraph && !showCalculusPanel ? 'bg-blue-700 bg-opacity-50' : 'bg-blue-600 bg-opacity-30 hover:bg-opacity-40'} text-white active:scale-95`}
+                            >
+                                Calculator
+                            </button>
+                            <button
+                                onClick={() => { setShow3DGraph(true); setShowCalculusPanel(false); }}
+                                className={`px-4 py-2 text-sm rounded-full font-semibold shadow-md transition-all duration-200 ${show3DGraph ? 'bg-blue-700 bg-opacity-50' : 'bg-blue-600 bg-opacity-30 hover:bg-opacity-40'} text-white active:scale-95`}
+                            >
+                                3D Graph
+                            </button>
+                            <button
+                                onClick={() => { setShowCalculusPanel(true); setShow3DGraph(false); }}
+                                className={`px-4 py-2 text-sm rounded-full font-semibold shadow-md transition-all duration-200 ${showCalculusPanel ? 'bg-blue-700 bg-opacity-50' : 'bg-blue-600 bg-opacity-30 hover:bg-opacity-40'} text-white active:scale-95`}
+                            >
+                                Calculus Panel
+                            </button>
+                        </div>
+
+                        {/* Conditional rendering of Calculator, 3D Graph, or Calculus Panel */}
+                        {show3DGraph ? (
+                            <div className="flex flex-col items-center flex-grow overflow-y-auto custom-scrollbar">
+                                <h3 className="text-white text-lg font-semibold mb-2 text-center">3D Function Plot (z = f(x, y))</h3>
+                                <div className="w-full mb-2">
+                                    <input
+                                        type="text"
+                                        value={plotFunctionString}
+                                        onChange={(e) => setPlotFunctionString(e.target.value)}
+                                        placeholder="Enter function (e.g., Math.sin(x)*y)"
+                                        className="w-full p-2 text-sm rounded-lg bg-white bg-opacity-15 text-white placeholder-gray-300 border border-opacity-20 border-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+                                {/* Make 3D graph responsive to its parent container */}
+                                <div className="w-full h-[300px] sm:h-[400px] md:h-[450px] flex-grow">
+                                    <ThreeDGraph
+                                        functionToPlot={parsedPlotFunction}
+                                        width="100%" // Take 100% of parent width
+                                        height="100%" // Take 100% of parent height
+                                    />
+                                </div>
+                                <p className="text-xs text-gray-300 mt-2 text-center">
+                                    Use your mouse to rotate and zoom.
+                                    <br />
+                                    (Example: `Math.sin(x * 0.5) * Math.cos(y * 0.5) * 5`)
+                                </p>
+                            </div>
+                        ) : showCalculusPanel ? (
+                            <div className="flex flex-col items-center flex-grow overflow-y-auto custom-scrollbar">
+                                <h3 className="text-white text-lg font-semibold mb-2 text-center">Advanced Calculus & Engineering Modules</h3>
+                                <div className="grid grid-cols-2 gap-2 w-full text-center">
+                                    {/* Calculus Operations */}
+                                    <button
+                                        onClick={() => handleAdvancedCalculus('integral')}
+                                        className="p-2 text-sm bg-purple-700 bg-opacity-20 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
+                                    >
+                                        ∫ Integral
+                                    </button>
+                                    <button
+                                        onClick={() => handleAdvancedCalculus('derivative')}
+                                        className="p-2 text-sm bg-purple-700 bg-opacity-20 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
+                                    >
+                                        ∂ Derivative
+                                    </button>
+                                    <button
+                                        onClick={() => handleAdvancedCalculus('matrix-add')}
+                                        className="p-2 text-sm bg-purple-700 bg-opacity-20 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
+                                    >
+                                        Matrix Ops
+                                    </button>
+                                    <button
+                                        onClick={() => handleAdvancedCalculus('pi-calc')}
+                                        className="p-2 text-sm bg-purple-700 bg-opacity-20 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
+                                    >
+                                        Calculate π
+                                    </button>
+                                    <button
+                                        onClick={() => handleAdvancedCalculus('light-speed')}
+                                        className="p-2 text-sm bg-purple-700 bg-opacity-20 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
+                                    >
+                                        c (Light Speed)
+                                    </button>
+                                    <button
+                                        onClick={() => handleAdvancedCalculus('time-calc')}
+                                        className="p-2 text-sm bg-purple-700 bg-opacity-20 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
+                                    >
+                                        Time Calc
+                                    </button>
+                                    <button
+                                        onClick={() => handleAdvancedCalculus('area-square')}
+                                        className="p-2 text-sm bg-purple-700 bg-opacity-20 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
+                                    >
+                                        Area/Square
+                                    </button>
+
+                                    {/* Advanced Modules (Placeholders) */}
+                                    <button
+                                        onClick={() => handleAdvancedCalculus('ml-model')}
+                                        className="p-2 text-sm bg-blue-700 bg-opacity-20 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
+                                    >
+                                        ML Models
+                                    </button>
+                                    <button
+                                        onClick={() => handleAdvancedCalculus('quantum-calc')}
+                                        className="p-2 text-sm bg-blue-700 bg-opacity-20 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
+                                    >
+                                        Quantum Calc
+                                    </button>
+                                    <button
+                                        onClick={() => handleAdvancedCalculus('matlab-style')}
+                                        className="p-2 text-sm bg-blue-700 bg-opacity-20 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
+                                    >
+                                        MATLAB View
+                                    </button>
+                                    <button
+                                        onClick={() => handleAdvancedCalculus('trading-signals')}
+                                        className="p-2 text-sm bg-blue-700 bg-opacity-20 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
+                                    >
+                                        Trading Signals
+                                    </button>
+                                    <button
+                                        onClick={() => handleAdvancedCalculus('evidence-log')}
+                                        className="p-2 text-sm bg-blue-700 bg-opacity-20 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
+                                    >
+                                        Evidence Log
+                                    </button>
+                                </div>
+                                {/* Placeholder for result/input for calculus panel */}
+                                <div className="mt-4 w-full bg-white bg-opacity-15 backdrop-filter backdrop-blur-sm rounded-xl p-3 shadow-inner border border-opacity-20 border-white text-right overflow-hidden relative flex-shrink-0">
+                                    <div className="text-gray-300 text-sm md:text-base min-h-[1.5em] overflow-x-auto whitespace-nowrap scrollbar-hide">
+                                        {input || 'Input for Calculus'}
+                                    </div>
+                                    <div className="text-white text-xl md:text-2xl font-bold min-h-[1.5em] overflow-x-auto whitespace-nowrap scrollbar-hide">
+                                        {result || 'Result (Placeholder)'}
+                                    </div>
+                                </div>
+                                <p className="text-xs text-gray-300 mt-2 text-center flex-shrink-0">
+                                    (These advanced functions are placeholders. Full implementation requires dedicated libraries and logic.)
+                                </p>
+                            </div>
+                        ) : (
+                            <>
+                                {/* Display screen */}
+                                <div className="bg-white bg-opacity-15 backdrop-filter backdrop-blur-sm rounded-xl p-4 mb-4 shadow-inner border border-opacity-20 border-white text-right overflow-hidden relative flex-shrink-0">
+                                    {/* Previous input / current expression */}
+                                    <div className="text-gray-300 text-lg sm:text-xl md:text-2xl min-h-[1.5em] overflow-x-auto whitespace-nowrap scrollbar-hide">
+                                        {input}
+                                    </div>
+                                    {/* Current result */}
+                                    <div className="text-white text-3xl sm:text-4xl md:text-5xl font-bold min-h-[1.5em] overflow-x-auto whitespace-nowrap scrollbar-hide">
+                                        {result || '0'}
+                                    </div>
+                                    {/* Custom scrollbar hide for overflow-x-auto */}
+                                    <style>{`
+                                        .scrollbar-hide::-webkit-scrollbar {
+                                            display: none;
+                                        }
+                                        .scrollbar-hide {
+                                            -ms-overflow-style: none;  /* IE and Edge */
+                                            scrollbar-width: none;  /* Firefox */
+                                        }
+                                    `}</style>
+                                </div>
+
+                                {/* Buttons Grid */}
+                                <div className="grid grid-cols-4 gap-3 sm:gap-4 flex-grow overflow-y-auto custom-scrollbar">
+                                    {/* Advanced Functions Row */}
+                                    <button
+                                        onClick={() => handleButtonClick('sin(')}
+                                        className="col-span-1 p-3 sm:p-4 bg-purple-700 bg-opacity-20 text-white text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
+                                    >
+                                        sin
+                                    </button>
+                                    <button
+                                        onClick={() => handleButtonClick('cos(')}
+                                        className="col-span-1 p-3 sm:p-4 bg-purple-700 bg-opacity-20 text-white text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
+                                    >
+                                        cos
+                                    </button>
+                                    <button
+                                        onClick={() => handleButtonClick('tan(')}
+                                        className="col-span-1 p-3 sm:p-4 bg-purple-700 bg-opacity-20 text-white text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
+                                    >
+                                        tan
+                                    </button>
+                                    <button
+                                        onClick={() => handleButtonClick('PI')}
+                                        className="col-span-1 p-3 sm:p-4 bg-purple-700 bg-opacity-20 text-white text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
+                                    >
+                                        π
+                                    </button>
+
+                                    {/* More Advanced Functions */}
+                                    <button
+                                        onClick={() => handleButtonClick('sqrt(')}
+                                        className="col-span-1 p-3 sm:p-4 bg-purple-700 bg-opacity-20 text-white text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
+                                    >
+                                        √
+                                    </button>
+                                    <button
+                                        onClick={() => handleButtonClick('^')}
+                                        className="col-span-1 p-3 sm:p-4 bg-purple-700 bg-opacity-20 text-white text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
+                                    >
+                                        xʸ
+                                    </button>
+                                    <button
+                                        onClick={() => handleButtonClick('log(')}
+                                        className="col-span-1 p-3 sm:p-4 bg-purple-700 bg-opacity-20 text-white text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
+                                    >
+                                        log
+                                    </button>
+                                    <button
+                                        onClick={() => handleButtonClick('ln(')}
+                                        className="col-span-1 p-3 sm:p-4 bg-purple-700 bg-opacity-20 text-white text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
+                                    >
+                                        ln
+                                    </button>
+
+                                    {/* Clear and Delete Buttons */}
+                                    <button
+                                        onClick={handleClear}
+                                        className="col-span-2 p-3 sm:p-4 bg-red-600 bg-opacity-30 text-white text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-40 active:scale-95"
+                                    >
+                                        C
+                                    </button>
+                                    <button
+                                        onClick={handleDelete}
+                                        className="col-span-1 p-3 sm:p-4 bg-red-600 bg-opacity-30 text-white text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-40 active:scale-95"
+                                    >
+                                        DEL
+                                    </button>
+                                    <button
+                                        onClick={() => handleButtonClick('/')}
+                                        className="col-span-1 p-3 sm:p-4 bg-blue-600 bg-opacity-30 text-white text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-40 active:scale-95"
+                                    >
+                                        /
+                                    </button>
+
+                                    {/* Numbers and Operators */}
+                                    {[7, 8, 9, '*'].map((item) => (
+                                        <button
+                                            key={item}
+                                            onClick={() => handleButtonClick(item.toString())}
+                                            className={`col-span-1 p-3 sm:p-4 ${
+                                                typeof item === 'number'
+                                                    ? 'bg-white bg-opacity-20 text-white hover:bg-opacity-30'
+                                                    : 'bg-blue-600 bg-opacity-30 text-white hover:bg-opacity-40'
+                                            } text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 active:scale-95`}
+                                        >
+                                            {item}
+                                        </button>
+                                    ))}
+                                    {[4, 5, 6, '-'].map((item) => (
+                                        <button
+                                            key={item}
+                                            onClick={() => handleButtonClick(item.toString())}
+                                            className={`col-span-1 p-3 sm:p-4 ${
+                                                typeof item === 'number'
+                                                    ? 'bg-white bg-opacity-20 text-white hover:bg-opacity-30'
+                                                    : 'bg-blue-600 bg-opacity-30 text-white hover:bg-opacity-40'
+                                            } text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 active:scale-95`}
+                                        >
+                                            {item}
+                                        </button>
+                                    ))}
+                                    {[1, 2, 3, '+'].map((item) => (
+                                        <button
+                                            key={item}
+                                            onClick={() => handleButtonClick(item.toString())}
+                                            className={`col-span-1 p-3 sm:p-4 ${
+                                                typeof item === 'number'
+                                                    ? 'bg-white bg-opacity-20 text-white hover:bg-opacity-30'
+                                                    : 'bg-blue-600 bg-opacity-30 text-white hover:bg-opacity-40'
+                                            } text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 active:scale-95`}
+                                        >
+                                            {item}
+                                        </button>
+                                    ))}
+
+                                    {/* Zero, Decimal, and Equals */}
+                                    <button
+                                        onClick={() => handleButtonClick('0')}
+                                        className="col-span-2 p-3 sm:p-4 bg-white bg-opacity-20 text-white text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
+                                    >
+                                        0
+                                    </button>
+                                    <button
+                                        onClick={() => handleButtonClick('.')}
+                                        className="col-span-1 p-3 sm:p-4 bg-white bg-opacity-20 text-white text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
+                                    >
+                                        .
+                                    </button>
+                                    <button
+                                        onClick={handleCalculate}
+                                        className="col-span-1 p-3 sm:p-4 bg-green-600 bg-opacity-30 text-white text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-40 active:scale-95"
+                                    >
+                                        =
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                    {/* This div forces the page to be 2500px tall for scrolling, but is now empty */}
+                    <div className="w-full h-[1500px] mt-8">
+                    </div>
+                </div>
+            );
+        };
+
+        // Render the App component into the root div
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
