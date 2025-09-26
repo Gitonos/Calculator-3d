@@ -3,681 +3,581 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pro Calculator Software</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts - Inter -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <title>3D Chess Game</title>
+    <!-- Inline styles instead of external CDNs -->
     <style>
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
-            /* overflow: hidden; was removed in the previous step to allow scrolling */
+            background: linear-gradient(135deg, #2d1b1b, #1a1e22);
+            min-height: 100vh;
+            color: white;
         }
-        /* Custom scrollbar hide for overflow-x-auto in display */
-        .scrollbar-hide::-webkit-scrollbar {
-            display: none;
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
         }
-        .scrollbar-hide {
-            -ms-overflow-style: none;  /* IE and Edge */
-            scrollbar-width: none;  /* Firefox */
+        .title {
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 2rem;
         }
-        /* Custom scrollbar style for internal scrolling areas (if desired) */
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 8px;
+        .game-layout {
+            display: flex;
+            gap: 2rem;
+            align-items: flex-start;
         }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
+        .chess-board-container {
+            background: linear-gradient(135deg, #30353b, #1a1e22);
+            border-radius: 1rem;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            flex: 1;
+            display: flex;
+            justify-content: center;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
+        .control-panel {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            width: 300px;
+            flex-shrink: 0;
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.3);
+        .btn {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            width: 100%;
+            margin-bottom: 0.5rem;
+            font-size: 14px;
+        }
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: translateY(-2px);
+        }
+        .btn-primary {
+            background: rgba(59, 130, 246, 0.3);
+            border-color: rgba(59, 130, 246, 0.5);
+        }
+        .btn-primary:hover {
+            background: rgba(59, 130, 246, 0.5);
+        }
+        .btn-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+        }
+        .status-display {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+        .move-history {
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+        .move-item {
+            color: #ccc;
+            padding: 0.25rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 12px;
+        }
+        .instructions {
+            font-size: 11px;
+            color: #999;
+            margin-top: 1rem;
+            line-height: 1.4;
+        }
+        .instructions ul {
+            margin: 0.5rem 0 0 1rem;
+            padding: 0;
+        }
+        .instructions li {
+            margin-bottom: 0.25rem;
+        }
+        .chess-square {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            transition: background-color 0.2s ease;
+        }
+        .chess-square:hover {
+            opacity: 0.8;
+        }
+        .chess-piece {
+            font-size: 36px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            user-select: none;
+        }
+        @media (max-width: 1024px) {
+            .game-layout {
+                flex-direction: column;
+            }
+            .control-panel {
+                width: 100%;
+            }
+            .chess-board-container {
+                order: -1;
+            }
+            #chess-board {
+                grid-template-columns: repeat(8, 50px);
+                grid-template-rows: repeat(8, 50px);
+            }
+            .chess-square {
+                width: 50px;
+                height: 50px;
+            }
+            .chess-piece {
+                font-size: 28px;
+            }
         }
     </style>
 
-    <!-- React and ReactDOM CDNs -->
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <!-- Babel for JSX transformation in the browser (for development, consider a build step for production) -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-    <!-- Three.js and OrbitControls CDNs -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/controls/OrbitControls.js"></script>
+    <!-- Simplified version without external dependencies for now -->
 </head>
 <body>
-    <div id="root"></div>
-
-    <script type="text/babel">
-        // ThreeDGraph Component: Renders a 3D surface plot using Three.js
-        const ThreeDGraph = ({ functionToPlot, width, height }) => {
-            const mountRef = React.useRef(null);
-
-            React.useEffect(() => {
-                // Ensure THREE and OrbitControls are available globally
-                if (typeof window.THREE === 'undefined' || typeof window.THREE.OrbitControls === 'undefined') {
-                    console.error('THREE.js or OrbitControls not loaded. Please ensure CDN scripts are included.');
-                    return;
-                }
-
-                const currentMount = mountRef.current;
-                if (!currentMount) return;
-
-                // Destructure global THREE for convenience
-                const { Scene, PerspectiveCamera, WebGLRenderer, AmbientLight, DirectionalLight, AxesHelper, GridHelper, BufferGeometry, Float32BufferAttribute, MeshPhongMaterial, Mesh, Color, OrbitControls } = window.THREE;
-
-                // Scene setup
-                const scene = new Scene();
-                scene.background = new Color(0x282c34); // Dark background for contrast
-
-                // Camera setup
-                const camera = new PerspectiveCamera(75, width / height, 0.1, 1000);
-                camera.position.set(20, 20, 20); // Initial camera position
-                camera.lookAt(0, 0, 0);
-
-                // Renderer setup
-                const renderer = new WebGLRenderer({ antialias: true });
-                renderer.setSize(width, height);
-                currentMount.appendChild(renderer.domElement);
-
-                // Orbit Controls for camera interaction
-                const controls = new OrbitControls(camera, renderer.domElement);
-                controls.enableDamping = true; // An animation loop is required when damping is enabled
-                controls.dampingFactor = 0.25;
-                controls.screenSpacePanning = false;
-                controls.maxPolarAngle = Math.PI / 2; // Limit vertical rotation
-
-                // Lighting
-                const ambientLight = new AmbientLight(0x404040, 2); // Soft white light
-                scene.add(ambientLight);
-                const directionalLight = new DirectionalLight(0xffffff, 1);
-                directionalLight.position.set(1, 1, 1).normalize();
-                scene.add(directionalLight);
-
-                // Axes Helper for orientation
-                const axesHelper = new AxesHelper(10); // Size of axes
-                scene.add(axesHelper);
-
-                // Grid Helper for ground plane reference
-                const gridHelper = new GridHelper(20, 20, 0x888888, 0x444444);
-                scene.add(gridHelper);
-
-                // Create the surface geometry based on the provided function
-                const resolution = 50; // Number of divisions along x and y
-                const range = 10; // Range from -range to +range for x and y
-                const step = (range * 2) / resolution;
-
-                const geometry = new BufferGeometry();
-                const vertices = [];
-                const colors = [];
-
-                let minZ = Infinity;
-                let maxZ = -Infinity;
-
-                // First pass to determine min/max Z for color scaling
-                for (let i = 0; i <= resolution; i++) {
-                    for (let j = 0; j <= resolution; j++) {
-                        const x = -range + i * step;
-                        const y = -range + j * step;
-                        try {
-                            const z = functionToPlot(x, y);
-                            minZ = Math.min(minZ, z);
-                            maxZ = Math.max(maxZ, z);
-                        } catch (e) {
-                            console.error("Error evaluating function (initial pass):", e);
-                            const z = 0;
-                            minZ = Math.min(minZ, z);
-                            maxZ = Math.max(maxZ, z);
-                        }
-                    }
-                }
-
-                // Define color mapping for the surface based on Z-value
-                const colorScale = (value, minZ, maxZ) => {
-                    if (maxZ === minZ) return new Color(0.5, 0.5, 0.5); // Handle flat surfaces
-                    const normalized = (value - minZ) / (maxZ - minZ);
-                    const color = new Color();
-                    // Simple gradient from blue (low) to red (high)
-                    color.setHSL(0.6 - (normalized * 0.6), 1, 0.5); // Hue from blue (0.6) to red (0)
-                    return color;
-                };
-
-                // Second pass to create vertices and colors
-                for (let i = 0; i <= resolution; i++) {
-                    for (let j = 0; j <= resolution; j++) {
-                        const x = -range + i * step;
-                        const y = -range + j * step;
-                        let z = 0;
-                        try {
-                            z = functionToPlot(x, y);
-                        } catch (e) {
-                            z = 0; // Default to 0 on error
-                        }
-
-                        vertices.push(x, z, y); // Swapped Y and Z to align Z-axis upwards (common in 3D plotting)
-                        const color = colorScale(z, minZ, maxZ);
-                        colors.push(color.r, color.g, color.b);
-                    }
-                }
-
-                const indices = [];
-                for (let i = 0; i < resolution; i++) {
-                    for (let j = 0; j < resolution; j++) {
-                        const i0 = i * (resolution + 1) + j;
-                        const i1 = i0 + 1;
-                        const i2 = (i + 1) * (resolution + 1) + j;
-                        const i3 = i2 + 1;
-
-                        indices.push(i0, i2, i1); // First triangle
-                        indices.push(i1, i2, i3); // Second triangle
-                    }
-                }
-
-                geometry.setAttribute('position', new Float32BufferAttribute(vertices, 3));
-                geometry.setAttribute('color', new Float32BufferAttribute(colors, 3));
-                geometry.setIndex(indices);
-                geometry.computeVertexNormals(); // For proper lighting
-
-                const material = new MeshPhongMaterial({
-                    vertexColors: true, // Enable vertex colors
-                    side: THREE.DoubleSide,
-                    flatShading: true, // Gives a faceted look
-                    shininess: 30
-                });
-                const mesh = new Mesh(geometry, material);
-                scene.add(mesh);
-
-                // Animation loop
-                const animate = () => {
-                    requestAnimationFrame(animate);
-                    controls.update(); // Only required if controls.enableDamping is set to true
-                    renderer.render(scene, camera);
-                };
-                animate();
-
-                // Handle window resize (this will still work for the component itself within the flexible parent)
-                const handleResize = () => {
-                    if (currentMount) {
-                        const parentWidth = currentMount.clientWidth;
-                        const parentHeight = currentMount.clientHeight;
-                        camera.aspect = parentWidth / parentHeight;
-                        camera.updateProjectionMatrix();
-                        renderer.setSize(parentWidth, parentHeight);
-                    }
-                };
-                // Attach resize listener to the parent element, not window, if we want component-level resizing
-                const resizeObserver = new ResizeObserver(handleResize);
-                resizeObserver.observe(currentMount);
-
-
-                // Cleanup function
-                return () => {
-                    resizeObserver.disconnect(); // Disconnect observer
-                    if (currentMount && renderer.domElement) {
-                        currentMount.removeChild(renderer.domElement);
-                    }
-                    geometry.dispose();
-                    material.dispose();
-                    renderer.dispose();
-                    controls.dispose();
-                    scene.children.forEach(child => scene.remove(child)); // Remove all objects
-                };
-            }, [width, height, functionToPlot]); // Re-run effect if dimensions or function change
-
-            return <div ref={mountRef} style={{ width: width, height: height, background: 'linear-gradient(135deg, #30353b, #1a1e22)', borderRadius: '1rem', overflow: 'hidden' }}></div>;
-        };
-
-
-        // Main App component for the Pro Calculator
-        const App = () => {
-            // State to hold the current input/display value
-            const [input, setInput] = React.useState('');
-            // State to hold the result of the calculation
-            const [result, setResult] = React.useState('');
-            // State to toggle between calculator and 3D graph view
-            const [show3DGraph, setShow3DGraph] = React.useState(false);
-            // State for the function string to plot in 3D
-            const [plotFunctionString, setPlotFunctionString] = React.useState('Math.sin(x * 0.5) * Math.cos(y * 0.5) * 5');
-            // State to show/hide the advanced calculus panel
-            const [showCalculusPanel, setShowCalculusPanel] = React.useState(false);
-
-
-            // Converts a string function (e.g., "x + y") into a JavaScript function
-            // WARNING: This uses new Function() which is similar to eval() and has security implications.
-            // For production, use a dedicated, secure math expression parser.
-            const createPlotFunction = React.useCallback((funcStr) => {
-                try {
-                    // Provide Math object to the function scope
-                    const func = new Function('x', 'y', 'Math', 'return ' + funcStr);
-                    return (x, y) => func(x, y, Math);
-                } catch (e) {
-                    console.error("Invalid function string:", e);
-                    return (x, y) => 0; // Return a constant function on error
-                }
-            }, []);
-
-            // Prepare the function for the 3D graph component
-            const parsedPlotFunction = createPlotFunction(plotFunctionString);
-
-
-            // Handles button clicks (numbers, operators, functions)
-            const handleButtonClick = (value) => {
-                // Clear the input if a result is displayed and a new number/operator is pressed
-                if (result && !['+', '-', '*', '/', '(', ')'].includes(value)) {
-                    setInput(value);
-                    setResult('');
-                    return;
-                }
-                setInput((prevInput) => prevInput + value);
-            };
-
-            // Handles calculation when '=' is pressed
-            const handleCalculate = () => {
-                try {
-                    // Replace common math functions with their JavaScript equivalents
-                    let expression = input
-                        .replace(/sin\(([^)]+)\)/g, 'Math.sin(parseFloat($1) * Math.PI / 180)') // Convert degrees to radians for sin
-                        .replace(/cos\(([^)]+)\)/g, 'Math.cos(parseFloat($1) * Math.PI / 180)') // Convert degrees to radians for cos
-                        .replace(/tan\(([^)]+)\)/g, 'Math.tan(parseFloat($1) * Math.PI / 180)') // Convert degrees to radians for tan
-                        .replace(/log\(/g, 'Math.log10(') // Base 10 log
-                        .replace(/ln\(/g, 'Math.log(')   // Natural log
-                        .replace(/sqrt\(/g, 'Math.sqrt(')
-                        .replace(/PI/g, 'Math.PI') // Replace 'PI' with Math.PI
-                        .replace(/C_LIGHT/g, '299792458') // Speed of light constant
-                        .replace(/\^/g, '**'); // Replace '^' with '**' for JavaScript exponentiation
-
-                    // Evaluate the expression using new Function()
-                    const calculatedResult = new Function('return ' + expression)();
-                    setResult(calculatedResult.toString());
-                    setInput(calculatedResult.toString()); // Keep the result in input for continuous calculation
-                } catch (error) {
-                    setResult('Error');
-                }
-            };
-
-            // Clears the input and result
-            const handleClear = () => {
-                setInput('');
-                setResult('');
-            };
-
-            // Deletes the last character from the input
-            const handleDelete = () => {
-                setInput((prevInput) => prevInput.slice(0, -1));
-            };
-
-            // Placeholder for advanced calculus functions
-            const handleAdvancedCalculus = (type) => {
-                switch (type) {
-                    case 'integral':
-                        setInput((prev) => prev + 'integral(f(x), a, b)');
-                        setResult('Define f(x), a, b');
-                        break;
-                    case 'derivative':
-                        setInput((prev) => prev + 'derivative(f(x), x)');
-                        setResult('Define f(x), x');
-                        break;
-                    case 'matrix-add':
-                        setInput((prev) => prev + 'matrixAdd()');
-                        setResult('Input matrices');
-                        break;
-                    case 'pi-calc':
-                        setInput('PI');
-                        setResult(Math.PI.toString());
-                        break;
-                    case 'light-speed':
-                        setInput('C_LIGHT');
-                        setResult('299792458'); // Speed of light in m/s
-                        break;
-                    case 'ml-model':
-                        setResult('ML Model Simulation (Placeholder)');
-                        break;
-                    case 'quantum-calc':
-                        setResult('Quantum Calculation (Placeholder)');
-                        break;
-                    case 'time-calc':
-                        setInput('time(distance, speed)');
-                        setResult('Define distance, speed');
-                        break;
-                    case 'area-square':
-                        setInput('area(side)');
-                        setResult('Define side');
-                        break;
-                    default:
-                        setResult('Function not implemented yet.');
-                }
-            };
-
-            // Render the calculator UI
-            return (
-                // min-h-[2500px] forces the page to be scrollable to this height
-                <div className="min-h-[2500px] flex flex-col items-center pt-8 pb-8 bg-gradient-to-br from-blue-900 to-purple-900 font-inter p-4">
-                    {/* Main container for calculator or 3D graph, now responsive */}
-                    <div className="relative p-6 rounded-3xl shadow-lg bg-white bg-opacity-10 backdrop-filter backdrop-blur-lg border border-opacity-20 border-white w-full max-w-2xl transform transition-all duration-300 hover:scale-105 flex flex-col">
-                        {/* Decorative glass elements */}
-                        <div className="absolute top-0 left-0 w-full h-full rounded-3xl overflow-hidden pointer-events-none">
-                            <div className="absolute w-24 h-24 bg-white opacity-5 rounded-full -top-10 -left-10 blur-xl"></div>
-                            <div className="absolute w-32 h-32 bg-white opacity-5 rounded-full -bottom-10 -right-10 blur-xl"></div>
-                        </div>
-
-                        {/* Toggle buttons */}
-                        <div className="flex justify-center space-x-4 mb-4 flex-shrink-0">
-                            <button
-                                onClick={() => { setShow3DGraph(false); setShowCalculusPanel(false); }}
-                                className={`px-4 py-2 text-sm rounded-full font-semibold shadow-md transition-all duration-200 ${!show3DGraph && !showCalculusPanel ? 'bg-blue-700 bg-opacity-50' : 'bg-blue-600 bg-opacity-30 hover:bg-opacity-40'} text-white active:scale-95`}
-                            >
-                                Calculator
-                            </button>
-                            <button
-                                onClick={() => { setShow3DGraph(true); setShowCalculusPanel(false); }}
-                                className={`px-4 py-2 text-sm rounded-full font-semibold shadow-md transition-all duration-200 ${show3DGraph ? 'bg-blue-700 bg-opacity-50' : 'bg-blue-600 bg-opacity-30 hover:bg-opacity-40'} text-white active:scale-95`}
-                            >
-                                3D Graph
-                            </button>
-                            <button
-                                onClick={() => { setShowCalculusPanel(true); setShow3DGraph(false); }}
-                                className={`px-4 py-2 text-sm rounded-full font-semibold shadow-md transition-all duration-200 ${showCalculusPanel ? 'bg-blue-700 bg-opacity-50' : 'bg-blue-600 bg-opacity-30 hover:bg-opacity-40'} text-white active:scale-95`}
-                            >
-                                Calculus Panel
-                            </button>
-                        </div>
-
-                        {/* Conditional rendering of Calculator, 3D Graph, or Calculus Panel */}
-                        {show3DGraph ? (
-                            <div className="flex flex-col items-center flex-grow overflow-y-auto custom-scrollbar">
-                                <h3 className="text-white text-lg font-semibold mb-2 text-center">3D Function Plot (z = f(x, y))</h3>
-                                <div className="w-full mb-2">
-                                    <input
-                                        type="text"
-                                        value={plotFunctionString}
-                                        onChange={(e) => setPlotFunctionString(e.target.value)}
-                                        placeholder="Enter function (e.g., Math.sin(x)*y)"
-                                        className="w-full p-2 text-sm rounded-lg bg-white bg-opacity-15 text-white placeholder-gray-300 border border-opacity-20 border-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    />
-                                </div>
-                                {/* Make 3D graph responsive to its parent container */}
-                                <div className="w-full h-[300px] sm:h-[400px] md:h-[450px] flex-grow">
-                                    <ThreeDGraph
-                                        functionToPlot={parsedPlotFunction}
-                                        width="100%" // Take 100% of parent width
-                                        height="100%" // Take 100% of parent height
-                                    />
-                                </div>
-                                <p className="text-xs text-gray-300 mt-2 text-center">
-                                    Use your mouse to rotate and zoom.
-                                    <br />
-                                    (Example: `Math.sin(x * 0.5) * Math.cos(y * 0.5) * 5`)
-                                </p>
-                            </div>
-                        ) : showCalculusPanel ? (
-                            <div className="flex flex-col items-center flex-grow overflow-y-auto custom-scrollbar">
-                                <h3 className="text-white text-lg font-semibold mb-2 text-center">Advanced Calculus & Engineering Modules</h3>
-                                <div className="grid grid-cols-2 gap-2 w-full text-center">
-                                    {/* Calculus Operations */}
-                                    <button
-                                        onClick={() => handleAdvancedCalculus('integral')}
-                                        className="p-2 text-sm bg-purple-700 bg-opacity-20 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
-                                    >
-                                        ∫ Integral
-                                    </button>
-                                    <button
-                                        onClick={() => handleAdvancedCalculus('derivative')}
-                                        className="p-2 text-sm bg-purple-700 bg-opacity-20 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
-                                    >
-                                        ∂ Derivative
-                                    </button>
-                                    <button
-                                        onClick={() => handleAdvancedCalculus('matrix-add')}
-                                        className="p-2 text-sm bg-purple-700 bg-opacity-20 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
-                                    >
-                                        Matrix Ops
-                                    </button>
-                                    <button
-                                        onClick={() => handleAdvancedCalculus('pi-calc')}
-                                        className="p-2 text-sm bg-purple-700 bg-opacity-20 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
-                                    >
-                                        Calculate π
-                                    </button>
-                                    <button
-                                        onClick={() => handleAdvancedCalculus('light-speed')}
-                                        className="p-2 text-sm bg-purple-700 bg-opacity-20 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
-                                    >
-                                        c (Light Speed)
-                                    </button>
-                                    <button
-                                        onClick={() => handleAdvancedCalculus('time-calc')}
-                                        className="p-2 text-sm bg-purple-700 bg-opacity-20 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
-                                    >
-                                        Time Calc
-                                    </button>
-                                    <button
-                                        onClick={() => handleAdvancedCalculus('area-square')}
-                                        className="p-2 text-sm bg-purple-700 bg-opacity-20 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
-                                    >
-                                        Area/Square
-                                    </button>
-
-                                    {/* Advanced Modules (Placeholders) */}
-                                    <button
-                                        onClick={() => handleAdvancedCalculus('ml-model')}
-                                        className="p-2 text-sm bg-blue-700 bg-opacity-20 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
-                                    >
-                                        ML Models
-                                    </button>
-                                    <button
-                                        onClick={() => handleAdvancedCalculus('quantum-calc')}
-                                        className="p-2 text-sm bg-blue-700 bg-opacity-20 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
-                                    >
-                                        Quantum Calc
-                                    </button>
-                                    <button
-                                        onClick={() => handleAdvancedCalculus('matlab-style')}
-                                        className="p-2 text-sm bg-blue-700 bg-opacity-20 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
-                                    >
-                                        MATLAB View
-                                    </button>
-                                    <button
-                                        onClick={() => handleAdvancedCalculus('trading-signals')}
-                                        className="p-2 text-sm bg-blue-700 bg-opacity-20 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
-                                    >
-                                        Trading Signals
-                                    </button>
-                                    <button
-                                        onClick={() => handleAdvancedCalculus('evidence-log')}
-                                        className="p-2 text-sm bg-blue-700 bg-opacity-20 text-white font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
-                                    >
-                                        Evidence Log
-                                    </button>
-                                </div>
-                                {/* Placeholder for result/input for calculus panel */}
-                                <div className="mt-4 w-full bg-white bg-opacity-15 backdrop-filter backdrop-blur-sm rounded-xl p-3 shadow-inner border border-opacity-20 border-white text-right overflow-hidden relative flex-shrink-0">
-                                    <div className="text-gray-300 text-sm md:text-base min-h-[1.5em] overflow-x-auto whitespace-nowrap scrollbar-hide">
-                                        {input || 'Input for Calculus'}
-                                    </div>
-                                    <div className="text-white text-xl md:text-2xl font-bold min-h-[1.5em] overflow-x-auto whitespace-nowrap scrollbar-hide">
-                                        {result || 'Result (Placeholder)'}
-                                    </div>
-                                </div>
-                                <p className="text-xs text-gray-300 mt-2 text-center flex-shrink-0">
-                                    (These advanced functions are placeholders. Full implementation requires dedicated libraries and logic.)
-                                </p>
-                            </div>
-                        ) : (
-                            <>
-                                {/* Display screen */}
-                                <div className="bg-white bg-opacity-15 backdrop-filter backdrop-blur-sm rounded-xl p-4 mb-4 shadow-inner border border-opacity-20 border-white text-right overflow-hidden relative flex-shrink-0">
-                                    {/* Previous input / current expression */}
-                                    <div className="text-gray-300 text-lg sm:text-xl md:text-2xl min-h-[1.5em] overflow-x-auto whitespace-nowrap scrollbar-hide">
-                                        {input}
-                                    </div>
-                                    {/* Current result */}
-                                    <div className="text-white text-3xl sm:text-4xl md:text-5xl font-bold min-h-[1.5em] overflow-x-auto whitespace-nowrap scrollbar-hide">
-                                        {result || '0'}
-                                    </div>
-                                    {/* Custom scrollbar hide for overflow-x-auto */}
-                                    <style>{`
-                                        .scrollbar-hide::-webkit-scrollbar {
-                                            display: none;
-                                        }
-                                        .scrollbar-hide {
-                                            -ms-overflow-style: none;  /* IE and Edge */
-                                            scrollbar-width: none;  /* Firefox */
-                                        }
-                                    `}</style>
-                                </div>
-
-                                {/* Buttons Grid */}
-                                <div className="grid grid-cols-4 gap-3 sm:gap-4 flex-grow overflow-y-auto custom-scrollbar">
-                                    {/* Advanced Functions Row */}
-                                    <button
-                                        onClick={() => handleButtonClick('sin(')}
-                                        className="col-span-1 p-3 sm:p-4 bg-purple-700 bg-opacity-20 text-white text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
-                                    >
-                                        sin
-                                    </button>
-                                    <button
-                                        onClick={() => handleButtonClick('cos(')}
-                                        className="col-span-1 p-3 sm:p-4 bg-purple-700 bg-opacity-20 text-white text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
-                                    >
-                                        cos
-                                    </button>
-                                    <button
-                                        onClick={() => handleButtonClick('tan(')}
-                                        className="col-span-1 p-3 sm:p-4 bg-purple-700 bg-opacity-20 text-white text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
-                                    >
-                                        tan
-                                    </button>
-                                    <button
-                                        onClick={() => handleButtonClick('PI')}
-                                        className="col-span-1 p-3 sm:p-4 bg-purple-700 bg-opacity-20 text-white text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
-                                    >
-                                        π
-                                    </button>
-
-                                    {/* More Advanced Functions */}
-                                    <button
-                                        onClick={() => handleButtonClick('sqrt(')}
-                                        className="col-span-1 p-3 sm:p-4 bg-purple-700 bg-opacity-20 text-white text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
-                                    >
-                                        √
-                                    </button>
-                                    <button
-                                        onClick={() => handleButtonClick('^')}
-                                        className="col-span-1 p-3 sm:p-4 bg-purple-700 bg-opacity-20 text-white text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
-                                    >
-                                        xʸ
-                                    </button>
-                                    <button
-                                        onClick={() => handleButtonClick('log(')}
-                                        className="col-span-1 p-3 sm:p-4 bg-purple-700 bg-opacity-20 text-white text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
-                                    >
-                                        log
-                                    </button>
-                                    <button
-                                        onClick={() => handleButtonClick('ln(')}
-                                        className="col-span-1 p-3 sm:p-4 bg-purple-700 bg-opacity-20 text-white text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
-                                    >
-                                        ln
-                                    </button>
-
-                                    {/* Clear and Delete Buttons */}
-                                    <button
-                                        onClick={handleClear}
-                                        className="col-span-2 p-3 sm:p-4 bg-red-600 bg-opacity-30 text-white text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-40 active:scale-95"
-                                    >
-                                        C
-                                    </button>
-                                    <button
-                                        onClick={handleDelete}
-                                        className="col-span-1 p-3 sm:p-4 bg-red-600 bg-opacity-30 text-white text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-40 active:scale-95"
-                                    >
-                                        DEL
-                                    </button>
-                                    <button
-                                        onClick={() => handleButtonClick('/')}
-                                        className="col-span-1 p-3 sm:p-4 bg-blue-600 bg-opacity-30 text-white text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-40 active:scale-95"
-                                    >
-                                        /
-                                    </button>
-
-                                    {/* Numbers and Operators */}
-                                    {[7, 8, 9, '*'].map((item) => (
-                                        <button
-                                            key={item}
-                                            onClick={() => handleButtonClick(item.toString())}
-                                            className={`col-span-1 p-3 sm:p-4 ${
-                                                typeof item === 'number'
-                                                    ? 'bg-white bg-opacity-20 text-white hover:bg-opacity-30'
-                                                    : 'bg-blue-600 bg-opacity-30 text-white hover:bg-opacity-40'
-                                            } text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 active:scale-95`}
-                                        >
-                                            {item}
-                                        </button>
-                                    ))}
-                                    {[4, 5, 6, '-'].map((item) => (
-                                        <button
-                                            key={item}
-                                            onClick={() => handleButtonClick(item.toString())}
-                                            className={`col-span-1 p-3 sm:p-4 ${
-                                                typeof item === 'number'
-                                                    ? 'bg-white bg-opacity-20 text-white hover:bg-opacity-30'
-                                                    : 'bg-blue-600 bg-opacity-30 text-white hover:bg-opacity-40'
-                                            } text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 active:scale-95`}
-                                        >
-                                            {item}
-                                        </button>
-                                    ))}
-                                    {[1, 2, 3, '+'].map((item) => (
-                                        <button
-                                            key={item}
-                                            onClick={() => handleButtonClick(item.toString())}
-                                            className={`col-span-1 p-3 sm:p-4 ${
-                                                typeof item === 'number'
-                                                    ? 'bg-white bg-opacity-20 text-white hover:bg-opacity-30'
-                                                    : 'bg-blue-600 bg-opacity-30 text-white hover:bg-opacity-40'
-                                            } text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 active:scale-95`}
-                                        >
-                                            {item}
-                                        </button>
-                                    ))}
-
-                                    {/* Zero, Decimal, and Equals */}
-                                    <button
-                                        onClick={() => handleButtonClick('0')}
-                                        className="col-span-2 p-3 sm:p-4 bg-white bg-opacity-20 text-white text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
-                                    >
-                                        0
-                                    </button>
-                                    <button
-                                        onClick={() => handleButtonClick('.')}
-                                        className="col-span-1 p-3 sm:p-4 bg-white bg-opacity-20 text-white text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-30 active:scale-95"
-                                    >
-                                        .
-                                    </button>
-                                    <button
-                                        onClick={handleCalculate}
-                                        className="col-span-1 p-3 sm:p-4 bg-green-600 bg-opacity-30 text-white text-lg sm:text-xl font-semibold rounded-lg shadow-md transition-all duration-200 hover:bg-opacity-40 active:scale-95"
-                                    >
-                                        =
-                                    </button>
-                                </div>
-                            </>
-                        )}
+    <div id="root">
+        <div class="container">
+            <h1 class="title">Chess Game</h1>
+            
+            <div class="game-layout">
+                <!-- Game Board -->
+                <div class="chess-board-container">
+                    <div id="chess-board"></div>
+                </div>
+                
+                <!-- Control Panel -->
+                <div class="control-panel">
+                    <!-- Game Status -->
+                    <div class="status-display">
+                        <div style="font-size: 18px; margin-bottom: 8px;">Current Player</div>
+                        <div id="current-player" style="font-size: 24px; font-weight: bold; text-transform: capitalize;">white</div>
+                        <div id="selected-info" style="font-size: 12px; margin-top: 8px; color: #ffeb3b; display: none;"></div>
                     </div>
-                    {/* This div forces the page to be 2500px tall for scrolling, but is now empty */}
-                    <div className="w-full h-[1500px] mt-8">
+
+                    <!-- Game Controls -->
+                    <div>
+                        <button onclick="resetGame()" class="btn">New Game</button>
+                        <button id="ai-button" onclick="toggleAI()" class="btn">AI: OFF</button>
+                        <div class="btn-grid">
+                            <button onclick="saveGame()" class="btn">Save</button>
+                            <button onclick="loadGame()" class="btn">Load</button>
+                        </div>
+                    </div>
+
+                    <!-- Move History -->
+                    <div>
+                        <h3 style="color: white; font-weight: 600; margin: 16px 0 8px 0; font-size: 16px;">Move History</h3>
+                        <div id="move-history" class="move-history"></div>
+                    </div>
+
+                    <!-- Instructions -->
+                    <div class="instructions">
+                        <div style="font-weight: 600; margin-bottom: 4px;">How to Play:</div>
+                        <ul>
+                            <li>• Click a piece to select it</li>
+                            <li>• Valid moves are highlighted in green</li>
+                            <li>• Click a highlighted square to move</li>
+                            <li>• Toggle AI for computer opponent</li>
+                            <li>• Save/Load games to local storage</li>
+                        </ul>
                     </div>
                 </div>
-            );
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simple Chess Game Implementation without external dependencies
+        
+        // Chess game state
+        let gameState = {
+            board: [],
+            currentPlayer: 'white',
+            selectedSquare: null,
+            validMoves: [],
+            moveHistory: [],
+            aiMode: false
         };
 
-        // Render the App component into the root div
-        ReactDOM.render(<App />, document.getElementById('root'));
+        // Chess Logic Module
+        const ChessLogic = {
+            createInitialBoard: () => {
+                const board = Array(8).fill(null).map(() => Array(8).fill(null));
+                
+                // Place black pieces
+                const backRowPieces = ['rook', 'knight', 'bishop', 'queen', 'king', 'bishop', 'knight', 'rook'];
+                backRowPieces.forEach((piece, i) => {
+                    board[0][i] = { type: piece, color: 'black' };
+                });
+                for (let i = 0; i < 8; i++) {
+                    board[1][i] = { type: 'pawn', color: 'black' };
+                }
+                
+                // Place white pieces
+                for (let i = 0; i < 8; i++) {
+                    board[6][i] = { type: 'pawn', color: 'white' };
+                }
+                backRowPieces.forEach((piece, i) => {
+                    board[7][i] = { type: piece, color: 'white' };
+                });
+                
+                return board;
+            },
+
+            isValidMove: (board, fromRow, fromCol, toRow, toCol, currentPlayer) => {
+                if (fromRow < 0 || fromRow > 7 || fromCol < 0 || fromCol > 7 ||
+                    toRow < 0 || toRow > 7 || toCol < 0 || toCol > 7) return false;
+                
+                const piece = board[fromRow][fromCol];
+                if (!piece || piece.color !== currentPlayer) return false;
+                
+                const targetPiece = board[toRow][toCol];
+                if (targetPiece && targetPiece.color === piece.color) return false;
+                
+                return ChessLogic.validatePieceMove(board, piece, fromRow, fromCol, toRow, toCol);
+            },
+
+            validatePieceMove: (board, piece, fromRow, fromCol, toRow, toCol) => {
+                const rowDiff = toRow - fromRow;
+                const colDiff = toCol - fromCol;
+                const absRowDiff = Math.abs(rowDiff);
+                const absColDiff = Math.abs(colDiff);
+
+                switch (piece.type) {
+                    case 'pawn':
+                        const direction = piece.color === 'white' ? -1 : 1;
+                        const startRow = piece.color === 'white' ? 6 : 1;
+                        
+                        if (colDiff === 0) {
+                            if (rowDiff === direction && !board[toRow][toCol]) return true;
+                            if (fromRow === startRow && rowDiff === 2 * direction && !board[toRow][toCol]) return true;
+                        }
+                        if (absColDiff === 1 && rowDiff === direction && board[toRow][toCol]) return true;
+                        break;
+                        
+                    case 'rook':
+                        if (rowDiff === 0 || colDiff === 0) {
+                            return ChessLogic.isPathClear(board, fromRow, fromCol, toRow, toCol);
+                        }
+                        break;
+                        
+                    case 'knight':
+                        return (absRowDiff === 2 && absColDiff === 1) || (absRowDiff === 1 && absColDiff === 2);
+                        
+                    case 'bishop':
+                        if (absRowDiff === absColDiff) {
+                            return ChessLogic.isPathClear(board, fromRow, fromCol, toRow, toCol);
+                        }
+                        break;
+                        
+                    case 'queen':
+                        if (rowDiff === 0 || colDiff === 0 || absRowDiff === absColDiff) {
+                            return ChessLogic.isPathClear(board, fromRow, fromCol, toRow, toCol);
+                        }
+                        break;
+                        
+                    case 'king':
+                        return absRowDiff <= 1 && absColDiff <= 1;
+                }
+                return false;
+            },
+
+            isPathClear: (board, fromRow, fromCol, toRow, toCol) => {
+                const rowStep = toRow > fromRow ? 1 : toRow < fromRow ? -1 : 0;
+                const colStep = toCol > fromCol ? 1 : toCol < fromCol ? -1 : 0;
+                
+                let currentRow = fromRow + rowStep;
+                let currentCol = fromCol + colStep;
+                
+                while (currentRow !== toRow || currentCol !== toCol) {
+                    if (board[currentRow][currentCol]) return false;
+                    currentRow += rowStep;
+                    currentCol += colStep;
+                }
+                return true;
+            },
+
+            makeMove: (board, fromRow, fromCol, toRow, toCol) => {
+                const newBoard = board.map(row => [...row]);
+                const piece = newBoard[fromRow][fromCol];
+                
+                if (piece.type === 'pawn' && (toRow === 0 || toRow === 7)) {
+                    piece.type = 'queen';
+                }
+                
+                newBoard[toRow][toCol] = piece;
+                newBoard[fromRow][fromCol] = null;
+                return newBoard;
+            }
+        };
+
+        // Initialize the game
+        function initGame() {
+            gameState.board = ChessLogic.createInitialBoard();
+            gameState.currentPlayer = 'white';
+            gameState.selectedSquare = null;
+            gameState.validMoves = [];
+            gameState.moveHistory = [];
+            renderBoard();
+            updateUI();
+        }
+
+        // Render the chess board as a 2D grid
+        function renderBoard() {
+            const boardElement = document.getElementById('chess-board');
+            boardElement.innerHTML = '';
+            
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const square = document.createElement('div');
+                    square.className = 'chess-square';
+                    square.dataset.row = row;
+                    square.dataset.col = col;
+                    
+                    const isLight = (row + col) % 2 === 0;
+                    square.style.backgroundColor = isLight ? '#f0d9b5' : '#b58863';
+                    
+                    // Highlight selected square
+                    if (gameState.selectedSquare && 
+                        gameState.selectedSquare.row === row && 
+                        gameState.selectedSquare.col === col) {
+                        square.style.backgroundColor = '#7b68ee';
+                    }
+                    
+                    // Highlight valid moves
+                    if (gameState.validMoves.some(move => move.row === row && move.col === col)) {
+                        square.style.backgroundColor = '#90ee90';
+                    }
+                    
+                    // Add piece if present
+                    const piece = gameState.board[row][col];
+                    if (piece) {
+                        const pieceElement = document.createElement('div');
+                        pieceElement.className = 'chess-piece';
+                        pieceElement.textContent = getPieceSymbol(piece);
+                        pieceElement.style.color = piece.color === 'white' ? '#fff' : '#000';
+                        square.appendChild(pieceElement);
+                    }
+                    
+                    square.addEventListener('click', () => handleSquareClick(row, col));
+                    boardElement.appendChild(square);
+                }
+            }
+        }
+
+        function getPieceSymbol(piece) {
+            const symbols = {
+                'king': '♔',
+                'queen': '♕',
+                'rook': '♖',
+                'bishop': '♗',
+                'knight': '♘',
+                'pawn': '♙'
+            };
+            return symbols[piece.type] || '?';
+        }
+
+        function handleSquareClick(row, col) {
+            if (gameState.selectedSquare) {
+                if (ChessLogic.isValidMove(gameState.board, 
+                    gameState.selectedSquare.row, gameState.selectedSquare.col, 
+                    row, col, gameState.currentPlayer)) {
+                    
+                    const piece = gameState.board[gameState.selectedSquare.row][gameState.selectedSquare.col];
+                    const targetPiece = gameState.board[row][col];
+                    const moveNotation = `${piece.type} ${String.fromCharCode(97 + gameState.selectedSquare.col)}${8 - gameState.selectedSquare.row} → ${String.fromCharCode(97 + col)}${8 - row}${targetPiece ? ' (captures)' : ''}`;
+                    
+                    gameState.board = ChessLogic.makeMove(gameState.board, 
+                        gameState.selectedSquare.row, gameState.selectedSquare.col, row, col);
+                    gameState.moveHistory.push(moveNotation);
+                    gameState.currentPlayer = gameState.currentPlayer === 'white' ? 'black' : 'white';
+                    gameState.selectedSquare = null;
+                    gameState.validMoves = [];
+                    
+                    playMoveSound();
+                    renderBoard();
+                    updateUI();
+                    
+                    if (gameState.aiMode && gameState.currentPlayer === 'black') {
+                        setTimeout(makeAIMove, 1000);
+                    }
+                } else {
+                    selectPiece(row, col);
+                }
+            } else {
+                selectPiece(row, col);
+            }
+        }
+
+        function selectPiece(row, col) {
+            const piece = gameState.board[row][col];
+            if (piece && piece.color === gameState.currentPlayer) {
+                gameState.selectedSquare = { row, col };
+                
+                const moves = [];
+                for (let r = 0; r < 8; r++) {
+                    for (let c = 0; c < 8; c++) {
+                        if (ChessLogic.isValidMove(gameState.board, row, col, r, c, gameState.currentPlayer)) {
+                            moves.push({ row: r, col: c });
+                        }
+                    }
+                }
+                gameState.validMoves = moves;
+            } else {
+                gameState.selectedSquare = null;
+                gameState.validMoves = [];
+            }
+            renderBoard();
+            updateUI();
+        }
+
+        function makeAIMove() {
+            const allMoves = [];
+            
+            for (let fromRow = 0; fromRow < 8; fromRow++) {
+                for (let fromCol = 0; fromCol < 8; fromCol++) {
+                    const piece = gameState.board[fromRow][fromCol];
+                    if (piece && piece.color === 'black') {
+                        for (let toRow = 0; toRow < 8; toRow++) {
+                            for (let toCol = 0; toCol < 8; toCol++) {
+                                if (ChessLogic.isValidMove(gameState.board, fromRow, fromCol, toRow, toCol, 'black')) {
+                                    allMoves.push({ fromRow, fromCol, toRow, toCol, piece });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            if (allMoves.length > 0) {
+                const randomMove = allMoves[Math.floor(Math.random() * allMoves.length)];
+                const targetPiece = gameState.board[randomMove.toRow][randomMove.toCol];
+                const moveNotation = `AI: ${randomMove.piece.type} ${String.fromCharCode(97 + randomMove.fromCol)}${8 - randomMove.fromRow} → ${String.fromCharCode(97 + randomMove.toCol)}${8 - randomMove.toRow}${targetPiece ? ' (captures)' : ''}`;
+                
+                gameState.board = ChessLogic.makeMove(gameState.board, randomMove.fromRow, randomMove.fromCol, randomMove.toRow, randomMove.toCol);
+                gameState.moveHistory.push(moveNotation);
+                gameState.currentPlayer = 'white';
+                playMoveSound();
+                renderBoard();
+                updateUI();
+            }
+        }
+
+        function playMoveSound() {
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.1);
+            } catch (e) {
+                console.log('Audio not supported');
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('current-player').textContent = gameState.currentPlayer;
+            document.getElementById('current-player').style.color = gameState.currentPlayer === 'white' ? '#fff' : '#666';
+            
+            const selectedInfo = document.getElementById('selected-info');
+            if (gameState.selectedSquare) {
+                selectedInfo.textContent = `Selected: ${String.fromCharCode(97 + gameState.selectedSquare.col)}${8 - gameState.selectedSquare.row}`;
+                selectedInfo.style.display = 'block';
+            } else {
+                selectedInfo.style.display = 'none';
+            }
+            
+            const moveHistoryElement = document.getElementById('move-history');
+            if (gameState.moveHistory.length === 0) {
+                moveHistoryElement.innerHTML = '<div style="color: #666; font-size: 12px;">No moves yet</div>';
+            } else {
+                moveHistoryElement.innerHTML = gameState.moveHistory.map((move, index) => 
+                    `<div class="move-item">${index + 1}. ${move}</div>`
+                ).join('');
+            }
+            
+            const aiButton = document.getElementById('ai-button');
+            aiButton.className = gameState.aiMode ? 'btn btn-primary' : 'btn';
+            aiButton.textContent = gameState.aiMode ? 'AI: ON' : 'AI: OFF';
+        }
+
+        function resetGame() {
+            initGame();
+        }
+
+        function toggleAI() {
+            gameState.aiMode = !gameState.aiMode;
+            updateUI();
+            if (gameState.aiMode && gameState.currentPlayer === 'black') {
+                setTimeout(makeAIMove, 500);
+            }
+        }
+
+        function saveGame() {
+            const gameData = {
+                board: gameState.board,
+                currentPlayer: gameState.currentPlayer,
+                moveHistory: gameState.moveHistory,
+                timestamp: new Date().toISOString()
+            };
+            localStorage.setItem('chessGame', JSON.stringify(gameData));
+            alert('Game saved!');
+        }
+
+        function loadGame() {
+            try {
+                const savedGame = localStorage.getItem('chessGame');
+                if (savedGame) {
+                    const gameData = JSON.parse(savedGame);
+                    gameState.board = gameData.board;
+                    gameState.currentPlayer = gameData.currentPlayer;
+                    gameState.moveHistory = gameData.moveHistory || [];
+                    gameState.selectedSquare = null;
+                    gameState.validMoves = [];
+                    renderBoard();
+                    updateUI();
+                    alert('Game loaded!');
+                } else {
+                    alert('No saved game found!');
+                }
+            } catch (e) {
+                alert('Error loading game!');
+            }
+        }
+
+        // Initialize the game when page loads
+        window.addEventListener('load', initGame);
     </script>
 </body>
 </html>
